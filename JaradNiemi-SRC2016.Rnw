@@ -1,4 +1,4 @@
-\documentclass{beamer}
+\documentclass[handout]{beamer}
 
 \usetheme{AnnArbor}
 \usecolortheme{beaver}
@@ -57,16 +57,16 @@ with Bobby Gramacy and Robin Weiss, University of Chicago
 
 Given a set of input-output pairs $(x_1,y_1),\ldots,(x_N,y_N)$ with $x_i\in \mathbb{R}^p$ and $y_i\in \mathbb{R}$\pause, we assume
 \[ 
-E[y|x] = f(x) \qquad \mbox{and} \qquad V[y|x] = \sigma^2
+E[y|x] = f(x) %\qquad \mbox{and} \qquad V[y|x] = \sigma^2
 \]
-for some unknown function $f$.  
+for some unknown function $f$. 
 
 \vspace{0.2in}\pause
 
 We consider the scenario where 
 \begin{itemize}
 \item $p \sim 10$
-\item $N \sim 10,000$
+\item $N \sim 10,000$ \pause
 \end{itemize}
 and our primary goal is to predict a set of outputs $\tilde{y}_1,\ldots,\tilde{y}_{\tilde{N}}$ based on their associated inputs $\tilde{x}_1,\ldots,\tilde{x}_{\tilde{N}}$.
 
@@ -77,7 +77,7 @@ and our primary goal is to predict a set of outputs $\tilde{y}_1,\ldots,\tilde{y
 \begin{frame}
 \frametitle{Gaussian process regression}
 
-Gaussian Process regression provides a prior over functions $Y:\mathbb{R}^p \to \mathbb{R}$ \pause where 
+Gaussian Process regression provides a prior over functions $f:\mathbb{R}^p \to \mathbb{R}$ \pause where 
 \begin{itemize}
 \item any finite collection of outputs ($y$) are jointly Gaussian,
 \item defined by a mean function $\mu(x) = E[Y(x)] = 0$, and 
@@ -104,15 +104,17 @@ where $\theta$ is referred to as the \emph{lengthscale} parameter.
 \begin{frame}
 \frametitle{Gaussian Process regression estimation}
 
-Let $y=(y_1,\ldots,y_n)$ and $X = (x_1^\top,\ldots,x_n^\top)$, then 
+Let $y=(y_1,\ldots,y_n)$ and $X = (x_1^\top,\ldots,x_n^\top)$, \pause then 
 \[ 
-Y \sim N(0,\tau^2 K_\theta) \quad \mbox{where} \quad K_\theta(i,j) = K_\theta(x_i,x_j).
+y \sim N(0,\tau^2 K_\theta) \quad \mbox{where} \quad K_\theta(i,j) = K_\theta(x_i,x_j).
 \]
-If $p(\tau^2) \propto 1/\tau^2$, then 
+\pause
+If $p(\tau^2) \propto 1/\tau^2$, \pause then 
 \[ 
-p(y|\theta) = \int p(y|\theta,\tau^2)p(\tau^2) d\tau^2 = \frac{\mG[N/2]}{(2\pi)^{N/2}\left|K_\theta\right|^{1/2}} \times
+L(\theta) \propto p(y|\theta) = \int p(y|\theta,\tau^2)p(\tau^2) d\tau^2 = \frac{\mG[N/2]}{(2\pi)^{N/2}\left|K_\theta\right|^{1/2}} \times
 \left(\frac{\psi_{\theta,y}}{2}\right)^{\!-\frac{N}{2}}
 \]
+\pause
 where $\psi_{\theta,y} = y^\top K_\theta^{-1} y$. \pause Analytic derivatives allows for easy maximization of this (marginal) likelihood, i.e.
 
 \[ 
@@ -126,7 +128,7 @@ where $\psi_{\theta,y} = y^\top K_\theta^{-1} y$. \pause Analytic derivatives al
 \begin{frame}
 \frametitle{Gaussian Process regression prediction}
 
-The predictive distribution for $\tilde{y}$ conditional on $\hat{\theta}$ and $\tilde{x}$ is Student $t$ with $N$ degrees of freedom, mean 
+The predictive distribution for $\tilde{y}$ conditional on $\hat{\theta}$ and $\tilde{x}$ \pause is Student $t$ with $N$ degrees of freedom, mean 
 \[ 
 \hat{f}(\tilde{x}) = \mu(\tilde{x}|\hat{\theta},y) = k_{\hat{\theta}}^\top(\tilde{x})  K_{\hat{\theta}}^{-1}y,
 \]
@@ -161,9 +163,9 @@ Define $V(\tilde{x}) \equiv Var[\tilde{y}|\hat{\theta},y] = \sigma^2(\tilde{x}|\
 When trying to predict $\tilde{y}$ for input $\tilde{x}$, rather than using $y$ and $X$ consider using a subset of the original data. \pause 
 If we choose the $n$ nearest neighbors, let 
 \[
-D_n(\tilde{x}) = \{ (x_i,y_i): K_\theta(\tilde{x},x_i) < \epsilon_{(n)} \}
+D_n(\tilde{x}) = \{ (x_i,y_i): K_\theta(\tilde{x},x_i) \le \delta_{(n)} \}
 \]
-where $\epsilon_{(n)}$ is the $n$th order statistic for the distances between $\tilde{x}$ and each of the other locations $x_i$. \pause Base inference and prediction on $D_n(\tilde{x})$ rather than $D_N(\tilde{x})$. 
+where $\delta_{(n)}$ is the $n$th order statistic for the distances between $\tilde{x}$ and each of the other locations $x_i$. \pause For location $\tilde{x}$, base estimation and prediction on $D_n(\tilde{x})$ rather than $D_N(\tilde{x})$. 
 
 \vspace{0.2in} \pause
 
@@ -172,7 +174,7 @@ Both problems are solved since
 \item matrix operations are now order $O(n^3)$ and
 \item the model is only locally stationary. 
 \end{itemize}
-
+\pause
 In addition,
 \begin{itemize}
 \item $E[\tilde{y}|\tilde{x},D_n(\tilde{x}),\hat{\theta}_{D_n(\tilde{x})}] \to E[\tilde{y}|\tilde{x},D_N(\tilde{x}),\hat{\theta}_{D_N(\tilde{x})}]$ as $n\to N$
@@ -223,13 +225,13 @@ g + geom_point(aes(color=nn1))
 
 We can do better by solving a sequence of easier decision problems\pause, i.e. 
 
-\begin{enumerate}
+\begin{enumerate}[<+->]
 \item Choose an initial design $n_0$, call it $D_{n_0}(\tilde{x})$.
 \item For $j=n_0,\ldots,n$, 
   \begin{enumerate}
   \item estimate $\theta$ based on $D_j(\tilde{x})$, 
   \item given $D_j(\tilde{x})$, choose $x_{j+1}$ according to \alert{some criterion} and
-  \item augment the design, $D_{j+1}(\tilde{x}) = D_j(\tilde{x}) \sup (x_{j+1},y_{j+1})$. 
+  \item augment the design, $D_{j+1}(\tilde{x}) = D_j(\tilde{x}) \cup (x_{j+1},y_{j+1})$. 
   \end{enumerate}
 \end{enumerate}
 \end{frame}
@@ -243,18 +245,19 @@ We can do better by solving a sequence of easier decision problems\pause, i.e.
 \item Minimize the empirical Bayes mean-square prediction error: \pause
 \[\begin{array}{ll}
 J(x_{j+1},\tilde{x}) 
-&= E\{(\tilde{y}(\tilde{x}) - E[\tilde{y}|\tilde{x},D_{j+1},\hat{\theta}_{D_{j+1}}])^2|D_j\} \\
-&\approx V_j[\tilde{y}(\tilde{x})| D_{j+1}; \hat{\theta}_j) + \left(\frac{\partial \mu_j(\tilde{x};
+&= E\{(\tilde{y}(\tilde{x}) - E[\tilde{y}|\tilde{x},D_{j+1},\hat{\theta}_{D_{j+1}}])^2|D_j\} \pause \\
+&\approx V_j[\tilde{y}(\tilde{x})| D_{j+1}; \hat{\theta}_j] + \left(\frac{\partial \mu_j(\tilde{x};
     \theta)}{\partial \theta}
 \Big{|}_{\theta = \hat{\theta}_j}\right)^2 /
 \mathcal{G}_{j+1}(\hat{\theta}_j).
 \end{array} \]
+\pause
 \item Maximize reduction in predictive variance:
 \[ 
-V_j[\tilde{y}(\tilde{x})| D_{j+1}; \hat{\theta}_j) - V_j[\tilde{y}(\tilde{x})| D_{j}; \hat{\theta}_j)
+ v_j(x_{j+1},D_j,\tilde{x}) = V_j[\tilde{y}(\tilde{x})| D_{j}; \hat{\theta}_j] - V_{j+1}[\tilde{y}(\tilde{x})| D_{j+1}; \hat{\theta}_j]
 \]
 \pause
-We call this \alert{active learning Cohn} (1996). 
+We call this \alert{active learning Cohn (ALC)} (1996). 
 \end{itemize}
 \end{frame}
 
@@ -288,12 +291,170 @@ Solution: For each location $\tilde{x}$, prediction from a Gaussian process regr
 
 \vspace{0.2in} \pause
 
-Embarrassingly parallel:
+(Almost) embarrassingly parallel:
 \begin{itemize}
 \item Each location $\tilde{x}$ can be predicted independently. 
 \item In each iteration of the sequential design, the potential locations can be evaluated independently and then compared. 
 \end{itemize}
+\end{frame}
 
+
+\subsection{Parallel computing}
+\begin{frame}[fragile]
+\frametitle{Parallel computing}
+
+Parallelizing across prediction locations was relatively trivial with OpenMP:
+\begin{verbatim}
+#pragma omp parallel for private(i)
+for(i=0; i<npred; i++) { ...
+\end{verbatim}
+
+\vspace{0.2in} \pause
+
+The ALC-based decision, i.e. 
+\[ 
+\mbox{argmin}_{x_{j+1} \in D_{N'}\setminus D_j} v_j(x_{j+1},D_j,\tilde{x})
+\]
+\pause
+is off-loaded to a GPU with
+\begin{itemize}
+\item each $x_{j+1}$ in a separate block with \pause
+\item $O(j^2)$ linear algebra on $j$ threads. 
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Computational comparisons}
+\setkeys{Gin}{width=0.45\textwidth}
+
+\includegraphics[scale=0.4,trim=0 0 30 0]{figs/alc_gpu_logtimes}
+\hfill
+\includegraphics[scale=0.4,trim=28 0 30 0]{figs/alc_gpu_rel}
+
+{\scriptsize
+Comparing CPU-only and GPU-only wall-clock timings
+for the ALC calculation at each of $n_{\mathrm{cand}}=60000$ candidate
+locations for varying $n$, the size of the local design.  %The {\em left} plot shows absolute performance on a $\log$ scale; the {\em right} plot makes a relative comparison via ratios of times.
+}
+\end{frame}
+
+
+\begin{frame}
+\frametitle{Computational comparisons}
+\setkeys{Gin}{width=0.45\textwidth}
+
+\includegraphics[scale=0.4,trim=0 0 30 0]{figs/alc_gpu_logtimes}
+\hfill
+\includegraphics[scale=0.4,trim=28 0 30 0]{figs/alc_gpu_rel}
+
+{\scriptsize
+Comparing CPU-only and GPU-only wall-clock timings
+for the ALC calculation at each of $n_{\mathrm{cand}}=60000$ candidate
+locations for varying $n$, the size of the local design.  %The {\em left} plot shows absolute performance on a $\log$ scale; the {\em right} plot makes a relative comparison via ratios of times.
+}
+\end{frame}
+
+
+\begin{frame}
+\frametitle{}
+\setkeys{Gin}{width=0.3\textwidth}
+\includegraphics[scale=0.336,trim=0 35 30 0,clip=TRUE]{figs/log_times} \hfill
+\includegraphics[scale=0.336,trim=28 35 30 0,clip=TRUE]{figs/log_times_c2} \hfill
+\includegraphics[scale=0.336,trim=28 35 30 0,clip=TRUE]{figs/log_times_c2e128}
+
+\includegraphics[scale=0.336,trim=0 0 30 40,clip=TRUE]{figs/rel_times} \hfill
+\includegraphics[scale=0.336,trim=28 0 30 40,clip=TRUE]{figs/rel_times_c2} \hfill
+\includegraphics[scale=0.336,trim=28 0 30 40,clip=TRUE]{figs/rel_times_c2e128}
+
+{\footnotesize
+Comparing full global approximation times for a $\sim40$K-sized
+design, and a $\sim 10$K predictive locations.
+}
+\end{frame}
+
+
+\begin{frame}
+\frametitle{One hour super-computing budget}
+
+\begin{tabular}{rrr|rrr}
+    &     &      &  \multicolumn{2}{c}{96x CPU}\\
+\hline
+$N$ & $n$ & $N'$ & seconds & mse \\ 
+\hline
+1000 & 40 & 100 & 0.48 & 4.88 \\ 
+2000 & 42 & 150 & 0.66 & 3.67 \\ 
+4000 & 44 & 225 & 0.87 & 2.35 \\ 
+8000 & 46 & 338 & 1.82 & 1.73 \\ 
+16000 & 48 & 507 & 4.01 & 1.25 \\ 
+32000 & 50 & 760 & 10.02 & 1.01 \\ 
+64000 & 52 & 1140 & 28.17 & 0.78 \\ 
+128000 & 54 & 1710 & 84.00 & 0.60 \\ 
+256000 & 56 & 2565 & 261.90 & 0.46 \\ 
+512000 & 58 & 3848 & 836.00 & 0.35 \\ 
+1024000 & 60 & 5772 & 2789.81 & 0.26 \\ 
+\hline
+\end{tabular}
+\hfill
+\begin{tabular}{rr}
+\multicolumn{2}{c}{5x 2 GPUs}\\
+\hline
+seconds & mse \\ 
+  \hline
+1.95 & 4.63 \\ 
+2.96 & 3.93 \\ 
+5.99 & 2.31 \\ 
+13.09 & 1.74 \\ 
+29.48 & 1.28 \\ 
+67.08 & 1.00 \\ 
+164.27 & 0.76 \\ 
+443.70 & 0.60 \\ 
+1254.63 & 0.46 \\ 
+4015.12 & 0.36 \\ 
+13694.48 & 0.27 \\ 
+\hline
+\end{tabular}
+\hfill
+\begin{tabular}{r}
+$\frac{\mathrm{CPU}}{5\cdot\mathrm{GPU}/96}$\\
+  \hline
+efficiency \\
+  \hline
+4.73 \\ 
+4.26 \\ 
+2.79 \\ 
+2.66 \\ 
+2.61 \\ 
+2.87 \\ 
+3.29 \\ 
+3.63 \\ 
+4.01 \\ 
+4.00 \\ 
+3.91 \\
+   \hline
+\end{tabular}
+\end{frame}
+
+
+\section{Resources}
+\begin{frame}
+\frametitle{Resources}
+
+Gramacy, R. B., Niemi, J., \& Weiss, R. M. (2014). Massively parallel approximate Gaussian process regression. SIAM/ASA Journal on Uncertainty Quantification, 2(1), 564-584.
+
+\vspace{0.3in} \pause
+
+This talk is available on my github site: \url{https://github.com/jarad/SRC2016}.
+
+\vspace{0.3in} \pause 
+
+Code to utilize the method is available in the \alert{{\tt laGP}} package on CRAN.
+
+\vspace{0.5in} \pause
+
+\begin{center}
+{\Huge Thank you!}
+\end{center}
 \end{frame}
 
 \end{document}
