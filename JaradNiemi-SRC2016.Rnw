@@ -1,0 +1,299 @@
+\documentclass{beamer}
+
+\usetheme{AnnArbor}
+\usecolortheme{beaver}
+
+\setlength{\unitlength}{\textwidth}  % measure in textwidths
+\usepackage[normalem]{ulem}
+
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{enumerate items}[default]
+\setbeamertemplate{enumerate subitem}{\alph{enumii}.}
+\setbeamertemplate{enumerate subsubitem}{\roman{enumiii}.}
+\setkeys{Gin}{width=0.6\textwidth}
+
+\author{Jarad Niemi}
+\institute{Iowa State University}
+\date{\today}
+
+\title{Massively Parallel\\Approximate Gaussian Process Regression}
+
+\newcommand{\mG}{\mathrm{\Gamma}}
+
+\begin{document}
+
+<<options, results='hide', echo=FALSE, purl=FALSE>>=
+opts_chunk$set(comment=NA, 
+               fig.width=6, fig.height=5, 
+               size='tiny', 
+               out.width='0.8\\textwidth', 
+               fig.align='center', 
+               message=FALSE,
+               echo=FALSE,
+               cache=TRUE)
+options(width=120)
+@
+
+<<libraries, message=FALSE, warning=FALSE, cache=FALSE>>=
+library(plyr)
+library(dplyr)
+library(ggplot2)
+@
+
+<<set_seed>>=
+set.seed(2)
+@
+
+\begin{frame}
+\maketitle
+\centering
+with Bobby Gramacy and Robin Weiss, University of Chicago
+\end{frame}
+
+\section{Gaussian process regression}
+\subsection{Nonparametric regression}
+\begin{frame}
+\frametitle{Nonparametric regression}
+
+Given a set of input-output pairs $(x_1,y_1),\ldots,(x_N,y_N)$ with $x_i\in \mathbb{R}^p$ and $y_i\in \mathbb{R}$\pause, we assume
+\[ 
+E[y|x] = f(x) \qquad \mbox{and} \qquad V[y|x] = \sigma^2
+\]
+for some unknown function $f$.  
+
+\vspace{0.2in}\pause
+
+We consider the scenario where 
+\begin{itemize}
+\item $p \sim 10$
+\item $N \sim 10,000$
+\end{itemize}
+and our primary goal is to predict a set of outputs $\tilde{y}_1,\ldots,\tilde{y}_{\tilde{N}}$ based on their associated inputs $\tilde{x}_1,\ldots,\tilde{x}_{\tilde{N}}$.
+
+\end{frame}
+
+
+\subsection{Model}
+\begin{frame}
+\frametitle{Gaussian process regression}
+
+Gaussian Process regression provides a prior over functions $Y:\mathbb{R}^p \to \mathbb{R}$ \pause where 
+\begin{itemize}
+\item any finite collection of outputs ($y$) are jointly Gaussian,
+\item defined by a mean function $\mu(x) = E[Y(x)] = 0$, and 
+\item and covariance function 
+\[\begin{array}{ll}
+C(x,x') 
+&= E\left\{ [Y(x)-\mu(x)][Y(x')-\mu(x')]^\top\right\} \\
+&= \tau^2 K_\theta(x,x').
+\end{array}\]
+\end{itemize}
+
+\pause
+
+We utilize the isotropic Gaussian correlation
+\[ 
+K_\theta(x,x') = \exp(-||x-x'||^2/\theta)
+\]
+\pause
+where $\theta$ is referred to as the \emph{lengthscale} parameter. 
+
+\end{frame}
+
+\subsection{Estimation}
+\begin{frame}
+\frametitle{Gaussian Process regression estimation}
+
+Let $y=(y_1,\ldots,y_n)$ and $X = (x_1^\top,\ldots,x_n^\top)$, then 
+\[ 
+Y \sim N(0,\tau^2 K_\theta) \quad \mbox{where} \quad K_\theta(i,j) = K_\theta(x_i,x_j).
+\]
+If $p(\tau^2) \propto 1/\tau^2$, then 
+\[ 
+p(y|\theta) = \int p(y|\theta,\tau^2)p(\tau^2) d\tau^2 = \frac{\mG[N/2]}{(2\pi)^{N/2}\left|K_\theta\right|^{1/2}} \times
+\left(\frac{\psi_{\theta,y}}{2}\right)^{\!-\frac{N}{2}}
+\]
+where $\psi_{\theta,y} = y^\top K_\theta^{-1} y$. \pause Analytic derivatives allows for easy maximization of this (marginal) likelihood, i.e.
+
+\[ 
+\hat{\theta} = \mbox{argmax}_\theta p(y|\theta).
+\]
+
+\end{frame}
+
+
+\subsection{Prediction}
+\begin{frame}
+\frametitle{Gaussian Process regression prediction}
+
+The predictive distribution for $\tilde{y}$ conditional on $\hat{\theta}$ and $\tilde{x}$ is Student $t$ with $N$ degrees of freedom, mean 
+\[ 
+\hat{f}(\tilde{x}) = \mu(\tilde{x}|\hat{\theta},y) = k_{\hat{\theta}}^\top(\tilde{x})  K_{\hat{\theta}}^{-1}y,
+\]
+and scale 
+\[ 
+\sigma^2(\tilde{x}|\hat{\theta},y) = \frac{\psi_{\hat{\theta},y} [K_{\hat{\theta}}(\tilde{x}, \tilde{x}) - k_{\hat{\theta}}^\top(\tilde{x})K_{\hat{\theta}}^{-1} k_{\hat{\theta}}(\tilde{x})]}{N}
+\]
+where $k_{\hat{\theta}}^\top(x)$ is the $N$-vector whose $i$th component is $K_{\hat{\theta}}(\tilde{x},x_i)$. 
+
+\vspace{0.2in}\pause
+
+Define $V(\tilde{x}) \equiv Var[\tilde{y}|\hat{\theta},y] = \sigma^2(\tilde{x}|\hat{\theta},y) \times N/(N-2)$. 
+
+\end{frame}
+
+
+\subsection{Issues}
+\begin{frame}
+\frametitle{Issues}
+\begin{itemize}
+\item Estimation and prediction are \alert{computationally intractible} when $N$ is large due to the $O(N^3)$ matrix operations, i.e. $|K_\theta|$ and $K_\theta^{-1}$ \pause
+\item Gaussian process regression model enforces \alert{stationarity}, i.e. the same covariance properties throughout the domain. 
+\end{itemize}
+\end{frame}
+
+
+\section{Approximate GP regression}
+\subsection{Nearest neighbors}
+\begin{frame}
+\frametitle{Nearest neighbors}
+
+When trying to predict $\tilde{y}$ for input $\tilde{x}$, rather than using $y$ and $X$ consider using a subset of the original data. \pause 
+If we choose the $n$ nearest neighbors, let 
+\[
+D_n(\tilde{x}) = \{ (x_i,y_i): K_\theta(\tilde{x},x_i) < \epsilon_{(n)} \}
+\]
+where $\epsilon_{(n)}$ is the $n$th order statistic for the distances between $\tilde{x}$ and each of the other locations $x_i$. \pause Base inference and prediction on $D_n(\tilde{x})$ rather than $D_N(\tilde{x})$. 
+
+\vspace{0.2in} \pause
+
+Both problems are solved since
+\begin{itemize}
+\item matrix operations are now order $O(n^3)$ and
+\item the model is only locally stationary. 
+\end{itemize}
+
+In addition,
+\begin{itemize}
+\item $E[\tilde{y}|\tilde{x},D_n(\tilde{x}),\hat{\theta}_{D_n(\tilde{x})}] \to E[\tilde{y}|\tilde{x},D_N(\tilde{x}),\hat{\theta}_{D_N(\tilde{x})}]$ as $n\to N$
+\item $V[\tilde{y}|\tilde{x},D_n(\tilde{x}),\hat{\theta}_{D_n(\tilde{x})}] > V[\tilde{y}|\tilde{x},D_N(\tilde{x}),\hat{\theta}_{D_N(\tilde{x})}]$
+\end{itemize}
+\end{frame}
+
+
+\begin{frame}
+
+<<nn_function>>=
+nn = function(d, x, e) {
+  dist = numeric(nrow(d))
+  for (i in 1:nrow(d)) {
+    dist[i] = sqrt(sum((d[i,]-x)^2))
+  }
+  dist <= e
+}
+@
+
+<<nearest_neighbors, dependson="nn_function">>=
+l = 21
+d = expand.grid(x1=seq(0,1,length.out=l), 
+                x2=seq(0,1,length.out=l))
+
+pts = data.frame(x1=c(.77,.21),
+                 x2=c(.77,.21))
+d$nn1 = nn(d[,1:2], pts[1,], .2)
+
+g = ggplot(d, aes(x1,x2)) + 
+  geom_point(data=pts, aes(x1,x2), color='red', shape=15, size=2) + 
+  theme_bw()
+g + geom_point(aes(color=nn1))
+@
+\end{frame}
+
+
+\subsection{Sequential design}
+\begin{frame}
+\frametitle{Sequential design}
+
+\begin{itemize}
+\item The nearest neighbor approach is sub-optimal collection of $n$ points for prediction at input $\tilde{x}$. 
+\item The optimal solution is computationally intractible due to the combinatorics involved, i.e. $N$ choose $n$. 
+\end{itemize}
+
+\vspace{0.2in} \pause
+
+We can do better by solving a sequence of easier decision problems\pause, i.e. 
+
+\begin{enumerate}
+\item Choose an initial design $n_0$, call it $D_{n_0}(\tilde{x})$.
+\item For $j=n_0,\ldots,n$, 
+  \begin{enumerate}
+  \item estimate $\theta$ based on $D_j(\tilde{x})$, 
+  \item given $D_j(\tilde{x})$, choose $x_{j+1}$ according to \alert{some criterion} and
+  \item augment the design, $D_{j+1}(\tilde{x}) = D_j(\tilde{x}) \sup (x_{j+1},y_{j+1})$. 
+  \end{enumerate}
+\end{enumerate}
+\end{frame}
+
+
+\subsection{Criterion}
+\begin{frame}
+\frametitle{Criterion}
+
+\begin{itemize}
+\item Minimize the empirical Bayes mean-square prediction error: \pause
+\[\begin{array}{ll}
+J(x_{j+1},\tilde{x}) 
+&= E\{(\tilde{y}(\tilde{x}) - E[\tilde{y}|\tilde{x},D_{j+1},\hat{\theta}_{D_{j+1}}])^2|D_j\} \\
+&\approx V_j[\tilde{y}(\tilde{x})| D_{j+1}; \hat{\theta}_j) + \left(\frac{\partial \mu_j(\tilde{x};
+    \theta)}{\partial \theta}
+\Big{|}_{\theta = \hat{\theta}_j}\right)^2 /
+\mathcal{G}_{j+1}(\hat{\theta}_j).
+\end{array} \]
+\item Maximize reduction in predictive variance:
+\[ 
+V_j[\tilde{y}(\tilde{x})| D_{j+1}; \hat{\theta}_j) - V_j[\tilde{y}(\tilde{x})| D_{j}; \hat{\theta}_j)
+\]
+\pause
+We call this \alert{active learning Cohn} (1996). 
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Points chosen by the criterion}
+\setkeys{Gin}{width=0.49\textwidth}
+
+\vspace{-0.2in}
+
+{\footnotesize \begin{align*}
+f(x_1,x_2) & = -w(x_1)w(x_2), \;\;\;\;\; \mbox{where} \\
+w(x) & = \exp\left(-(x-1)^2\right) + \exp\left(-0.8(x+1)^2\right) 
+- 0.05\sin\left(8(x+0.1)\right)
+\end{align*}
+with $X$ on a $201\times 201$
+($=40401$ point) regular grid in $[-2,2]$.}
+
+\includegraphics[scale=0.33,trim=50 10 5 20]{figs/alcmspe} \hfill
+\includegraphics[scale=0.33,trim=30 10 35 20]{figs/alcmspe_corner}
+\vspace{-0.5cm}
+\end{frame}
+
+\begin{frame}
+\frametitle{Massively parallel}
+
+Problem: Predict a set of outputs $\tilde{y}_1,\ldots,\tilde{y}_{\tilde{N}}$ based on their associated inputs $\tilde{x}_1,\ldots,\tilde{x}_{\tilde{N}}$ where $N$ and $\tilde{N}$ are both large. 
+
+\vspace{0.2in} \pause
+
+Solution: For each location $\tilde{x}$, prediction from a Gaussian process regression model based on the design $D_n(\tilde{x}$) ($n<<N$) where the inputs in the design are sequentially added based on the ALC criterion. 
+
+\vspace{0.2in} \pause
+
+Embarrassingly parallel:
+\begin{itemize}
+\item Each location $\tilde{x}$ can be predicted independently. 
+\item In each iteration of the sequential design, the potential locations can be evaluated independently and then compared. 
+\end{itemize}
+
+\end{frame}
+
+\end{document}
