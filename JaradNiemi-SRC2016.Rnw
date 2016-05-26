@@ -115,10 +115,10 @@ L(\theta) \propto p(y|\theta) = \int p(y|\theta,\tau^2)p(\tau^2) d\tau^2 = \frac
 \left(\frac{\psi_{\theta,y}}{2}\right)^{\!-\frac{N}{2}}
 \]
 \pause
-where $\psi_{\theta,y} = y^\top K_\theta^{-1} y$. \pause Analytic derivatives allows for easy maximization of this (marginal) likelihood, i.e.
+where $\psi_{\theta,y} = y^\top K_\theta^{-1} y$. Analytic derivatives allows for easy maximization of this (marginal) likelihood, i.e.
 
 \[ 
-\hat{\theta} = \mbox{argmax}_\theta p(y|\theta).
+\hat{\theta} = \mbox{argmax}_\theta L(\theta).
 \]
 
 \end{frame}
@@ -128,10 +128,11 @@ where $\psi_{\theta,y} = y^\top K_\theta^{-1} y$. \pause Analytic derivatives al
 \begin{frame}
 \frametitle{Gaussian Process regression prediction}
 
-The predictive distribution for $\tilde{y}$ conditional on $\hat{\theta}$ and $\tilde{x}$ \pause is Student $t$ with $N$ degrees of freedom, mean 
+The predictive distribution for $\tilde{y}$ conditional on $\hat{\theta}$ and $\tilde{x}$ \pause is Student $t$ with $N$ degrees of freedom,\pause mean 
 \[ 
 \hat{f}(\tilde{x}) = \mu(\tilde{x}|\hat{\theta},y) = k_{\hat{\theta}}^\top(\tilde{x})  K_{\hat{\theta}}^{-1}y,
 \]
+\pause
 and scale 
 \[ 
 \sigma^2(\tilde{x}|\hat{\theta},y) = \frac{\psi_{\hat{\theta},y} [K_{\hat{\theta}}(\tilde{x}, \tilde{x}) - k_{\hat{\theta}}^\top(\tilde{x})K_{\hat{\theta}}^{-1} k_{\hat{\theta}}(\tilde{x})]}{N}
@@ -163,7 +164,7 @@ Define $V(\tilde{x}) \equiv Var[\tilde{y}|\hat{\theta},y] = \sigma^2(\tilde{x}|\
 When trying to predict $\tilde{y}$ for input $\tilde{x}$, rather than using $y$ and $X$ consider using a subset of the original data. \pause 
 If we choose the $n$ nearest neighbors, let 
 \[
-D_n(\tilde{x}) = \{ (x_i,y_i): K_\theta(\tilde{x},x_i) \le \delta_{(n)} \}
+D_n(\tilde{x}) = \{ (x_i,y_i): \mbox{dist}(\tilde{x},x_i) \le \delta_{(n)} \}
 \]
 where $\delta_{(n)}$ is the $n$th order statistic for the distances between $\tilde{x}$ and each of the other locations $x_i$. \pause For location $\tilde{x}$, base estimation and prediction on $D_n(\tilde{x})$ rather than $D_N(\tilde{x})$. 
 
@@ -183,34 +184,6 @@ In addition,
 \end{frame}
 
 
-\begin{frame}
-
-<<nn_function>>=
-nn = function(d, x, e) {
-  dist = numeric(nrow(d))
-  for (i in 1:nrow(d)) {
-    dist[i] = sqrt(sum((d[i,]-x)^2))
-  }
-  dist <= e
-}
-@
-
-<<nearest_neighbors, dependson="nn_function">>=
-l = 21
-d = expand.grid(x1=seq(0,1,length.out=l), 
-                x2=seq(0,1,length.out=l))
-
-pts = data.frame(x1=c(.77,.21),
-                 x2=c(.77,.21))
-d$nn1 = nn(d[,1:2], pts[1,], .2)
-
-g = ggplot(d, aes(x1,x2)) + 
-  geom_point(data=pts, aes(x1,x2), color='red', shape=15, size=2) + 
-  theme_bw()
-g + geom_point(aes(color=nn1))
-@
-\end{frame}
-
 
 \subsection{Sequential design}
 \begin{frame}
@@ -227,9 +200,8 @@ We can do better by solving a sequence of easier decision problems\pause, i.e.
 
 \begin{enumerate}[<+->]
 \item Choose an initial design $n_0$, call it $D_{n_0}(\tilde{x})$.
-\item For $j=n_0,\ldots,n$, 
-  \begin{enumerate}
-  \item estimate $\theta$ based on $D_j(\tilde{x})$, 
+\item For $j=n_0,\ldots,n-1$, 
+  \begin{enumerate} 
   \item given $D_j(\tilde{x})$, choose $x_{j+1}$ according to \alert{some criterion} and
   \item augment the design, $D_{j+1}(\tilde{x}) = D_j(\tilde{x}) \cup (x_{j+1},y_{j+1})$. 
   \end{enumerate}
@@ -293,7 +265,7 @@ Solution: For each location $\tilde{x}$, prediction from a Gaussian process regr
 
 (Almost) embarrassingly parallel:
 \begin{itemize}
-\item Each location $\tilde{x}$ can be predicted independently. 
+\item Each location $\tilde{x}$ can be predicted independently. \pause
 \item In each iteration of the sequential design, the potential locations can be evaluated independently and then compared. 
 \end{itemize}
 \end{frame}
@@ -313,7 +285,7 @@ for(i=0; i<npred; i++) { ...
 
 The ALC-based decision, i.e. 
 \[ 
-\mbox{argmin}_{x_{j+1} \in D_{N'}\setminus D_j} v_j(x_{j+1},D_j,\tilde{x})
+\mbox{argmax}_{x_{j+1} \in D_{N'}\setminus D_j} v_j(x_{j+1},D_j,\tilde{x})
 \]
 \pause
 is off-loaded to a GPU with
@@ -334,23 +306,7 @@ is off-loaded to a GPU with
 
 {\scriptsize
 Comparing CPU-only and GPU-only wall-clock timings
-for the ALC calculation at each of $n_{\mathrm{cand}}=60000$ candidate
-locations for varying $n$, the size of the local design.  %The {\em left} plot shows absolute performance on a $\log$ scale; the {\em right} plot makes a relative comparison via ratios of times.
-}
-\end{frame}
-
-
-\begin{frame}
-\frametitle{Computational comparisons}
-\setkeys{Gin}{width=0.45\textwidth}
-
-\includegraphics[scale=0.4,trim=0 0 30 0]{figs/alc_gpu_logtimes}
-\hfill
-\includegraphics[scale=0.4,trim=28 0 30 0]{figs/alc_gpu_rel}
-
-{\scriptsize
-Comparing CPU-only and GPU-only wall-clock timings
-for the ALC calculation at each of $n_{\mathrm{cand}}=60000$ candidate
+for the ALC calculation at each of $N=60000$ candidate
 locations for varying $n$, the size of the local design.  %The {\em left} plot shows absolute performance on a $\log$ scale; the {\em right} plot makes a relative comparison via ratios of times.
 }
 \end{frame}
@@ -368,8 +324,7 @@ locations for varying $n$, the size of the local design.  %The {\em left} plot s
 \includegraphics[scale=0.336,trim=28 0 30 40,clip=TRUE]{figs/rel_times_c2e128}
 
 {\footnotesize
-Comparing full global approximation times for a $\sim40$K-sized
-design, and a $\sim 10$K predictive locations.
+Comparing full global approximation times for $N \approx 40$K and $\tilde{N} \approx 10$K predictive locations.
 }
 \end{frame}
 
@@ -380,7 +335,7 @@ design, and a $\sim 10$K predictive locations.
 \begin{tabular}{rrr|rrr}
     &     &      &  \multicolumn{2}{c}{96x CPU}\\
 \hline
-$N$ & $n$ & $N'$ & seconds & mse \\ 
+$N=\tilde{N}$ & $n$ & $N'$ & seconds & mse \\ 
 \hline
 1000 & 40 & 100 & 0.48 & 4.88 \\ 
 2000 & 42 & 150 & 0.66 & 3.67 \\ 
